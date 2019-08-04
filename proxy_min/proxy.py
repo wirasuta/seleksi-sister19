@@ -25,6 +25,9 @@ class ConnectionHandlerThread(threading.Thread):
             Block jika termasuk blacklist
             Ubah headers menjadi dict
             Pilihan edit headers/continue
+            Connect ke host (ex: www.google.com atau wirasuta.com)
+            Sendall payload
+            Recvall payload dan forward ke user
         '''
         print(self.data)
         print(self.path)
