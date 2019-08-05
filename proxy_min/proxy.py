@@ -1,19 +1,13 @@
 import socket
-import time
 import re
 import threading
 import select
-
-HOST = '127.0.0.1'
-PORT = 7175
-
-BLACKLIST = ['.*?google.*']
+import configparser
 
 CLOSE_CONN = b'HTTP/1.0 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n'
 BLOCK_CONN = b'HTTP/1.0 403 Forbidden\r\nConnection: close\r\nContent-Length: 16\r\n\r\nBlocked by proxy'
 
 class ConnectionHandlerThread(threading.Thread):
-
     def __init__(self, conn):
         super(ConnectionHandlerThread, self).__init__()
         data = conn.recv(2048)
@@ -42,6 +36,7 @@ class ConnectionHandlerThread(threading.Thread):
                 print(f'[-] Blocked connection to {self.path} (Blacklist)')
                 return
 
+        #Choose action for request
         while True:
             choice = input(f'[?] Choose option for {self.raddr}:{self.rport} to {self.path}\n[C/P/E/B/?]: ')
             if choice == 'C':
@@ -73,7 +68,8 @@ class ConnectionHandlerThread(threading.Thread):
             byte_headers += f'{header_key}: {self.headers[header_key]}\r\n'.encode()
 
         self.data = self.data.split(b'\r\n\r\n',1)[0].split(b'\r\n')[0] + b'\r\n' + byte_headers + b'\r\n' + self.data.split(b'\r\n\r\n',1)[1]
-
+        
+        #Forward request
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as lsck:
             lsck.settimeout(30)
             lsck.connect((self.base_path, 80))
@@ -97,6 +93,14 @@ class ConnectionHandlerThread(threading.Thread):
                     print(f'[-] Closed connection from {self.raddr}:{self.rport}')
                     return
 
+#Read config file for blacklist
+config = configparser.ConfigParser(interpolation=None)
+config.read('config.ini')
+BLACKLIST = config['DEFAULT'].get('BLACKLIST', '').split(',')
+HOST = config['DEFAULT'].get('HOST', '127.0.0.1')
+PORT = config['DEFAULT'].get('PORT', 7175)
+
+#Process incoming connection
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((HOST, PORT))
