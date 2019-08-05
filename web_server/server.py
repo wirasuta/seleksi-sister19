@@ -15,7 +15,6 @@ class HttpHandler():
     def add_handler(self, path, method, fun):
         '''
             Add handler, single route could have multiple handler to handle different method
-            TODO: Update path to regex
         '''
         if path in self.handlers:      #Route already exist
             self.handlers[path][method] = fun      
@@ -51,9 +50,9 @@ class HttpHandler():
         
 
 class ConnectionHandlerThread(threading.Thread):
-    RES_404 = b'HTTP/1.0 404 Not Found\nConnection: close\nContent-Length: 0\n\n'
-    RES_501 = b'HTTP/1.0 500 Not Implemented\nConnection: close\nContent-Length: 0\n\n'
-    HEAD_200 = b'HTTP/1.0 200 OK\nConnection: close\nContent-Length: '
+    RES_404 = b'HTTP/1.0 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n'
+    RES_501 = b'HTTP/1.0 500 Not Implemented\r\nConnection: close\r\nContent-Length: 0\r\n\r\n'
+    HEAD_200 = b'HTTP/1.0 200 OK\r\nConnection: close\r\nContent-Length: '
 
     def __init__(self, conn, handlers):
         super(ConnectionHandlerThread, self).__init__()
@@ -80,14 +79,14 @@ class ConnectionHandlerThread(threading.Thread):
                     result = self.handlers[re_path]['POST'](**params)
                     header = self.HEAD_200 + str(len(result)).encode() + b'\n\n'
                     response = header + result
-                    print(f'[+] Respond 200: {response.decode()}')
+                    print(f'[+] Respond 200:\n{response.decode()}')
                     self.conn.sendall(response)
                 else:
                     params = HttpHandler.parse_url_params(re_path, self.path)
                     result = self.handlers[re_path][self.method](*params)
                     header = self.HEAD_200 + str(len(result)).encode() + b'\n\n'
                     response = header + result
-                    print(f'[+] Respond 200: {response.decode()}')
+                    print(f'[+] Respond 200:\n{response.decode()}')
                     self.conn.sendall(response)
                 return
             else:
@@ -99,10 +98,12 @@ class ConnectionHandlerThread(threading.Thread):
 
 def sleep(*args, **kwargs):
     if len(args) > 0:
+        print(f'[i] Sleeping for {args[0]} ms')
         time.sleep(int(args[0])/1000)
         res = str(time.time())
         return res.encode()
     elif 'duration' in kwargs.keys():
+        print(f'[i] Sleeping for {kwargs["duration"]} ms')
         time.sleep(int(kwargs['duration'])/1000)
         res = str(time.time())
         return res.encode()
