@@ -30,6 +30,9 @@ class HttpHandler():
 
     @staticmethod
     def is_valid(path, handlers):
+        '''
+            Check if path exist in handlers, return the pattern if path exist
+        '''
         for pattern in handlers.keys():
             if re.fullmatch(pattern, path):
                 return pattern
@@ -37,10 +40,16 @@ class HttpHandler():
     
     @staticmethod
     def parse_url_params(pattern, path):
+        '''
+            Parse url parameters to tuple
+        '''
         return re.fullmatch(pattern, path).groups()
 
     @staticmethod
     def parse_body_params(body):
+        '''
+            Parse POST body x-www-form-urlencoded parameters to dictionary
+        '''
         gr = re.findall('([A-Za-z0-9%.]+=[A-Za-z0-9%.]+)', body)
         args = {}
         for item in gr:
@@ -76,26 +85,35 @@ class ConnectionHandlerThread(threading.Thread):
             if self.method in self.handlers[re_path]:
                 if self.method == 'POST':
                     params = HttpHandler.parse_body_params(self.body)
+
+                    # Execute the corresponding handler
                     result = self.handlers[re_path]['POST'](**params)
                     header = self.HEAD_200 + str(len(result)).encode() + b'\n\n'
                     response = header + result
+
                     print(f'[+] Respond 200:\n{response.decode()}')
                     self.conn.sendall(response)
                 else:
                     params = HttpHandler.parse_url_params(re_path, self.path)
+
+                    # Execute the corresponding handler
                     result = self.handlers[re_path][self.method](*params)
                     header = self.HEAD_200 + str(len(result)).encode() + b'\n\n'
                     response = header + result
+
                     print(f'[+] Respond 200:\n{response.decode()}')
                     self.conn.sendall(response)
                 return
             else:
+                # Invalid request method
                 print('[-] Respond 501')
                 self.conn.sendall(self.RES_501)
         else:
+            # Invalid Path
             print('[-] Respond 404')
             self.conn.sendall(self.RES_404)
 
+# Sleep function
 def sleep(*args, **kwargs):
     if len(args) > 0:
         print(f'[i] Sleeping for {args[0]} ms')
