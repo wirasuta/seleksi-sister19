@@ -7,7 +7,7 @@ import select
 HOST = '127.0.0.1'
 PORT = 7175
 
-BLACKLIST = ['.*?google.*', 'http://www\.columbia\.edu.*']
+BLACKLIST = ['.*?google.*']
 
 CLOSE_CONN = b'HTTP/1.0 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n'
 BLOCK_CONN = b'HTTP/1.0 403 Forbidden\r\nConnection: close\r\nContent-Length: 16\r\n\r\nBlocked by proxy'
@@ -43,19 +43,36 @@ class ConnectionHandlerThread(threading.Thread):
                 return
 
         while True:
-            choice = input(f'[?] Choose option for {self.raddr}:{self.rport} to {self.path} (C/E/B/?): ')
+            choice = input(f'[?] Choose option for {self.raddr}:{self.rport} to {self.path}\n[C/P/E/B/?]: ')
             if choice == 'C':
                 break
+            elif choice == 'P':
+                print('[i] Current request headers')
+                for header_key in self.headers.keys():
+                    print(f'    {header_key}: {self.headers[header_key]}')
             elif choice == 'E':
-                # TODO: Implement edit headers
-                print('Edit Headers')
-                break
+                print('[i] Current request headers')
+                for header_key in self.headers.keys():
+                    print(f'    {header_key}: {self.headers[header_key]}')
+                print('\n[i] To edit an existing value, input the key and new value of it')
+                print('    To add a new value, input the new key and value')
+                print('    You can only edit/add a single header at a time')
+                key = input('[?] Enter header key: ')
+                value = input('[?] Enter header value: ')
+                self.headers[key] = value
             elif choice == 'B':
                 self.conn.send(BLOCK_CONN)
                 print(f'[-] Blocked connection to {self.path}')
                 return
             else:
-                print('[i] Proxy Help:\nC - Forward the connection\nE - Edit header(s), then forward the connection\nB - Block the connection')
+                print('[i] Proxy Help:\nC - Forward the connection\nP - Print request header\nE - Add or edit header\nB - Block the connection')
+        
+        #Update request data
+        byte_headers = b''
+        for header_key in self.headers.keys():
+            byte_headers += f'{header_key}: {self.headers[header_key]}\r\n'.encode()
+
+        self.data = self.data.split(b'\r\n\r\n',1)[0].split(b'\r\n')[0] + b'\r\n' + byte_headers + b'\r\n' + self.data.split(b'\r\n\r\n',1)[1]
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as lsck:
             lsck.settimeout(30)
