@@ -15,7 +15,7 @@ class ConnectionHandlerThread(threading.Thread):
 
         self.method = data_split[0].decode()
         self.path = data_split[1].decode()
-        self.base_path = re.fullmatch('https?://(.*?)/.*', self.path).groups()[0]
+        self.base_path = re.fullmatch('http://(.*?)/.*', self.path).groups()[0]
         
         byte_headers = data.split(b'\r\n\r\n')[0].split(b'\r\n')[1:]
         self.headers = {}
@@ -29,11 +29,11 @@ class ConnectionHandlerThread(threading.Thread):
 
 
     def run(self):
-        #Block connection if listed on blaclist
+        #Block request if listed on blaclist
         for bl_path in BLACKLIST:
             if re.fullmatch(bl_path, self.path):
                 self.conn.send(BLOCK_CONN)
-                print(f'[-] Blocked connection to {self.path} (Blacklist)')
+                print(f'[-] Blocked request to {self.path} (Blacklist)')
                 return
 
         #Choose action for request
@@ -57,10 +57,10 @@ class ConnectionHandlerThread(threading.Thread):
                 self.headers[key] = value
             elif choice == 'B':
                 self.conn.send(BLOCK_CONN)
-                print(f'[-] Blocked connection to {self.path}')
+                print(f'[-] Blocked request to {self.path}')
                 return
             else:
-                print('[i] Proxy Help:\nC - Forward the connection\nP - Print request header\nE - Add or edit header\nB - Block the connection')
+                print('[i] Proxy Help:\nC - Forward the request\nP - Print request header\nE - Add or edit header\nB - Block the request')
         
         #Update request data
         byte_headers = b''
@@ -98,9 +98,9 @@ config = configparser.ConfigParser(interpolation=None)
 config.read('config.ini')
 BLACKLIST = config['DEFAULT'].get('BLACKLIST', '').split(',')
 HOST = config['DEFAULT'].get('HOST', '127.0.0.1')
-PORT = config['DEFAULT'].get('PORT', 7175)
+PORT = int(config['DEFAULT'].get('PORT', '7175'))
 
-#Process incoming connection
+#Process incoming request
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((HOST, PORT))
